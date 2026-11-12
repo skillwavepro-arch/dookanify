@@ -1,0 +1,311 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDocKey(id) {
+      return id is string && id.size() >= 1 && id.size() <= 160 && id.matches('^[a-zA-Z0-9_\\-@.+]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprint: ShopProfile
+    function isValidShopProfile(data) {
+      return data.keys().hasAll([
+          'ownerId', 'ownerEmail', 'shopName', 'ownerName', 'phone',
+          'address', 'priceCodeKey', 'workingCapital', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'ownerEmail', 'shopName', 'ownerName', 'phone',
+          'address', 'priceCodeKey', 'workingCapital', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 120
+        && data.shopName is string && data.shopName.size() >= 1 && data.shopName.size() <= 120
+        && data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 100
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 25
+        && data.address is string && data.address.size() >= 1 && data.address.size() <= 200
+        && data.priceCodeKey is string && data.priceCodeKey.size() == 10
+        && data.workingCapital is number && data.workingCapital >= 0 && data.workingCapital <= 1000000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Product
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'sku', 'category', 'size', 'color', 'fabric',
+          'buyPrice', 'sellPrice', 'stock', 'minStockAlert', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'sku', 'category', 'size', 'color', 'fabric',
+          'buyPrice', 'sellPrice', 'stock', 'minStockAlert', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 40
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 40
+        && data.category in ['পাঞ্জাবি', 'শাড়ি', 'থ্রি-পিস', 'শার্ট', 'প্যান্ট', 'টি-শার্ট', 'বাচ্চাদের পোশাক', 'অন্যান্য']
+        && data.size is string && data.size.size() >= 1 && data.size.size() <= 20
+        && data.size in ['S', 'M', 'L', 'XL', 'XXL', 'Free Size', '38', '40', '42', '44']
+        && data.color is string && data.color.size() >= 1 && data.color.size() <= 40
+        && data.fabric is string && data.fabric.size() >= 1 && data.fabric.size() <= 60
+        && data.buyPrice is number && data.buyPrice >= 0 && data.buyPrice <= 10000000
+        && data.sellPrice is number && data.sellPrice >= 0 && data.sellPrice <= 10000000
+        && data.stock is number && data.stock >= 0 && data.stock <= 1000000
+        && data.minStockAlert is number && data.minStockAlert >= 0 && data.minStockAlert <= 100000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Customer
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'phone', 'address', 'totalPurchase', 'totalDue', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'phone', 'address', 'totalPurchase', 'totalDue', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20
+        && data.address is string && data.address.size() >= 1 && data.address.size() <= 200
+        && data.totalPurchase is number && data.totalPurchase >= 0 && data.totalPurchase <= 100000000
+        && data.totalDue is number && data.totalDue >= 0 && data.totalDue <= 100000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: Sale
+    function isValidSale(data) {
+      return data.keys().hasAll([
+          'ownerId', 'invoiceNo', 'customerName', 'customerPhone', 'itemsSummary',
+          'totalItemsCount', 'subtotal', 'discount', 'grandTotal', 'paidAmount',
+          'dueAmount', 'profit', 'paymentMethod', 'saleDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'invoiceNo', 'customerName', 'customerPhone', 'itemsSummary',
+          'totalItemsCount', 'subtotal', 'discount', 'grandTotal', 'paidAmount',
+          'dueAmount', 'profit', 'paymentMethod', 'saleDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.invoiceNo is string && data.invoiceNo.size() >= 1 && data.invoiceNo.size() <= 40
+        && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 100
+        && data.customerPhone is string && data.customerPhone.size() >= 0 && data.customerPhone.size() <= 20
+        && data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 500
+        && data.totalItemsCount is number && data.totalItemsCount >= 0 && data.totalItemsCount <= 10000
+        && data.subtotal is number && data.subtotal >= 0 && data.subtotal <= 100000000
+        && data.discount is number && data.discount >= 0 && data.discount <= 100000000
+        && data.grandTotal is number && data.grandTotal >= 0 && data.grandTotal <= 100000000
+        && data.paidAmount is number && data.paidAmount >= 0 && data.paidAmount <= 100000000
+        && data.dueAmount is number && data.dueAmount >= 0 && data.dueAmount <= 100000000
+        && data.profit is number && data.profit >= -10000000 && data.profit <= 100000000
+        && data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 30
+        && data.paymentMethod in ['নগদ (Cash)', 'বিকাশ (bKash)', 'নগদ (Nagad)', 'কার্ড (Card)', 'বাকি (Due)']
+        && data.saleDateISO is string && data.saleDateISO.size() == 10
+        && data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: Expense
+    function isValidExpense(data) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'category', 'amount', 'expenseDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'category', 'amount', 'expenseDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 50
+        && data.category in ['দোকান ভাড়া', 'বিদ্যুৎ ও ইন্টারনেট', 'কর্মচারী বেতন', 'পরিবহন ও ডেলিভারি', 'প্যাকেজিং ও শপিং ব্যাগ', 'চা-নাস্তা ও আপ্যায়ন', 'অন্যান্য']
+        && data.amount is number && data.amount > 0 && data.amount <= 100000000
+        && data.expenseDateISO is string && data.expenseDateISO.size() == 10
+        && data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 40
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: ExtraIncome
+    function isValidExtraIncome(data) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'category', 'amount', 'incomeDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'category', 'amount', 'incomeDateISO', 'dateLabel', 'createdAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 150
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 60
+        && data.category in ['বকশিস / টিপস', 'অন্যান্য প্রাপ্ত টাকা', 'দোকানে ক্যাশ পুঁজি যোগ (Capital Inject)']
+        && data.amount is number && data.amount > 0 && data.amount <= 100000000
+        && data.incomeDateISO is string && data.incomeDateISO.size() == 10
+        && data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 40
+        && data.createdAt is timestamp;
+    }
+
+    // Validation Blueprint: StaffMember
+    function isValidStaffMember(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'role', 'phone', 'monthlySalary', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'role', 'phone', 'monthlySalary', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.role is string && data.role.size() >= 1 && data.role.size() <= 80
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20
+        && data.monthlySalary is number && data.monthlySalary >= 0 && data.monthlySalary <= 10000000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection: /shops/{shopId} (Cross-Device Real-Time Shop Snapshot & Profile Vault)
+    match /shops/{shopId} {
+      allow get: if isValidDocKey(shopId);
+      allow list: if true;
+      allow create, update, delete: if isValidDocKey(shopId);
+    }
+
+    // Collection: /products/{productId}
+    match /products/{productId} {
+      allow get: if isSignedIn() && isValidId(productId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(productId)
+        && isValidProduct(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(productId)
+        && isValidProduct(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'sku', 'category', 'size', 'color', 'fabric',
+            'buyPrice', 'sellPrice', 'stock', 'minStockAlert', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(productId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /customers/{customerId}
+    match /customers/{customerId} {
+      allow get: if isSignedIn() && isValidId(customerId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomer(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomer(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['totalPurchase', 'totalDue', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'address', 'totalPurchase', 'totalDue', 'updatedAt'])
+        );
+      allow delete: if isVerifiedUser() && isValidId(customerId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /sales/{saleId}
+    match /sales/{saleId} {
+      allow get: if isSignedIn() && isValidId(saleId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(saleId)
+        && isValidSale(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(saleId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /expenses/{expenseId}
+    match /expenses/{expenseId} {
+      allow get: if isSignedIn() && isValidId(expenseId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(expenseId)
+        && isValidExpense(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(expenseId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /extraIncomes/{incomeId}
+    match /extraIncomes/{incomeId} {
+      allow get: if isSignedIn() && isValidId(incomeId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(incomeId)
+        && isValidExtraIncome(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(incomeId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /staff/{staffId}
+    match /staff/{staffId} {
+      allow get: if isSignedIn() && isValidId(staffId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(staffId)
+        && isValidStaffMember(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(staffId)
+        && isValidStaffMember(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'phone', 'monthlySalary', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(staffId) && existing().ownerId == request.auth.uid;
+    }
+
+    // Collection: /users/{userId} (Account Auth & Cloud Snapshot Sync for Web & Android APK)
+    match /users/{userId} {
+      allow get: if isValidDocKey(userId);
+      allow list: if true;
+      allow create, update, delete: if isValidDocKey(userId);
+    }
+
+    // Collection: /admin_registry/{docId} (Strict Admin Control Registry Path: admin_registry/approved_users)
+    match /admin_registry/{docId} {
+      allow get: if isValidDocKey(docId);
+      allow list: if true;
+      allow create, update, delete: if isValidDocKey(docId);
+    }
+  }
+}

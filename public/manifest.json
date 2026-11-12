@@ -1,0 +1,30 @@
+{
+  "name": "Dookanify — কাপড়ের দোকানের ডিজিটাল ক্যাশ ও স্টক বুক",
+  "short_name": "Dookanify",
+  "description": "কাপড়ের দোকানের আধুনিক স্টক, পস বিলিং, ডিজিটাল পিডিএফ ক্যাশ মেমো, বাকির খাতা এবং লাভ-পুঁজি ব্যবস্থাপনা অ্যাপ।",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#021810",
+  "theme_color": "#052e1e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
